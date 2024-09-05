@@ -1,7 +1,6 @@
 const { addDays, addWeeks, addMonths, getDay } = require('date-fns');
 const cronParser = require('cron-parser');
 
-
 class Text2Time {
     constructor(args = {}) {
         this.now = args.now || new Date();
