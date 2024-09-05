@@ -30,7 +30,7 @@ console.log(result.date); // Next Tuesday's date
 ### 🎭 Examples for `next`
 
 ```javascript
-const t2t = new Text2Time(new Date('2023-05-15T12:00:00'));
+const t2t = new Text2Time({ now: new Date('2023-05-15T12:00:00') });
 
 console.log(t2t.next('tuesday').date);  // 2023-05-16 Tuesday 12:00
 console.log(t2t.next('july second week friday').date);  // 2023-07-14 Friday 12:00
@@ -44,7 +44,7 @@ console.log(result.ends);   // 2023-08-10 Thursday 12:00
 
 ### 🎭 Examples for `add`
 ```javascript
-const t2t = new Text2Time(new Date('2023-05-15T12:00:00'));
+const t2t = new Text2Time({ now: new Date('2023-05-15T12:00:00') });
 
 console.log(t2t.next('add 1 day').date);    // 2023-05-16 Tuesday 12:00
 console.log(t2t.next('add 7 days').date);   // 2023-05-22 Monday 12:00
@@ -52,12 +52,30 @@ console.log(t2t.next('add 1 week').date);   // 2023-05-22 Monday 12:00
 console.log(t2t.next('add 1 month').date);  // 2023-06-15 Thursday 12:00
 ```
 
+### 🎭 Example with `parse` for `next` Occurrences
+```javascript
+const t2t = new Text2Time({
+    now: new Date('2023-05-15T12:00:00'),
+    every: { next: 6 } // how many in next
+});
+const result = t2t.parse('every 3 months day 5 at 4:04');
+console.log('\nNext 6 occurrences:');
+result.next.forEach(date => {
+    // 2023-07-05 Wednesday 04:04
+    // 2023-10-05 Thursday 04:04
+    // 2024-01-05 Friday 04:04
+    // 2024-04-05 Friday 04:04
+    // 2024-07-05 Friday 04:04
+    // 2024-10-05 Saturday 04:04
+});
+```
+
 ## ⏰ Generating Cron Expressions
 
 Use the `every` method to create cron expressions:
 
 ```javascript
-const t2t = new Text2Time();
+const t2t = new Text2Time({ every:{ seconds:true } });
 
 console.log(t2t.every('August At 00:05:10'));  // '10 5 0 * 8 *'
 console.log(t2t.every('Friday and Monday At 04:05'));  // '0 5 4 * * 1,5'

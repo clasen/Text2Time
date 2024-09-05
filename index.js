@@ -1,9 +1,12 @@
-const { format, addDays, addWeeks, addMonths, getDay } = require('date-fns');
+const { addDays, addWeeks, addMonths, getDay } = require('date-fns');
+const cronParser = require('cron-parser');
+
 
 class Text2Time {
-    constructor(customNow = new Date()) {
-        this.now = customNow;
-        
+    constructor(args = {}) {
+        this.now = args.now || new Date();
+        this.everyOptions = args.every || { next: 60, seconds: true };
+
         // Constants for days
         this.DAYS = {
             sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
@@ -19,20 +22,26 @@ class Text2Time {
         this.WEEK_NUMBERS = {
             first: 1, second: 2, third: 3, fourth: 4
         };
-
-        this.DATE_FORMAT = 'yyyy-MM-dd EEEE HH:mm';
     }
 
     next(input) {
         input = input.toLowerCase();
-        const skip = input.startsWith('next') || input.startsWith('add') || input.startsWith('now');
+        const skipPrefixes = ['next', 'add', 'now', 'every'];
+        const skip = skipPrefixes.some(prefix => input.startsWith(prefix));
         return this.parse(skip ? input : 'next ' + input);
     }
 
     parse(input) {
         const parts = input.toLowerCase().split(' ');
         const now = this.now;
-        let result = { date: now, ends: null };
+        let result = { date: now, ends: null, next:[] };
+
+        if (parts[0] === 'every') {
+            const cron = this.every(input);
+            result.next = this.getNextDates(cron, this.now, this.everyOptions.next);
+            result.date = result.next[0];
+            return result;
+        }
 
         if (parts[0] === 'next') {
             if (parts.includes('week')) {
@@ -170,7 +179,12 @@ class Text2Time {
             }
         }
 
-        return `${second} ${minute} ${hour} ${dayOfMonth} ${month} ${dayOfWeek}`;
+        // Modify the return statement based on the everyOptions
+        const cronParts = [second, minute, hour, dayOfMonth, month, dayOfWeek];
+        if (!this.everyOptions.seconds) {
+            cronParts.shift();
+        }
+        return cronParts.join(' ');
     }
 
     // Get a specific day relative to today
@@ -234,16 +248,16 @@ class Text2Time {
     nextWeekInterval(month, weekNumber, startDayOfWeek, endDayOfWeek) {
         const currentMonth = this.now.getMonth() + 1; // getMonth() is zero-indexed
         const targetYear = (month < currentMonth) ? this.now.getFullYear() + 1 : this.now.getFullYear();
-        
+
         // If weekNumber is not provided, default to the first week
         weekNumber = weekNumber || this.WEEK_NUMBERS.first;
-        
+
         const { start, end } = this.getWeekInterval(month, targetYear, weekNumber, startDayOfWeek, endDayOfWeek);
-        
+
         // Preserve the time from this.now
         start.setHours(this.now.getHours(), this.now.getMinutes(), this.now.getSeconds(), this.now.getMilliseconds());
         end.setHours(this.now.getHours(), this.now.getMinutes(), this.now.getSeconds(), this.now.getMilliseconds());
-        
+
         return { start, end };
     }
 
@@ -257,77 +271,27 @@ class Text2Time {
         const firstDayOfMonth = new Date(targetYear, month - 1, 1);
         const firstDesiredDay = this.nextDayOfWeekInMonth(firstDayOfMonth, dayOfWeek);
         const result = addDays(firstDesiredDay, (weekNumber - 1) * 7);
-        
+
         // Preserve the time from this.now
         result.setHours(this.now.getHours(), this.now.getMinutes(), this.now.getSeconds(), this.now.getMilliseconds());
-        
+
         return result;
     }
-}
 
-// Cases
-const assert = require('assert');
-function runTests() {
-    const testCases = [
-        { input: 'now', expected: '2023-05-15 Monday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'add 1 day', expected: '2023-05-16 Tuesday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'add 7 days', expected: '2023-05-22 Monday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'add 1 week', expected: '2023-05-22 Monday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'add 2 week', expected: '2023-05-29 Monday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'tuesday', expected: '2023-05-16 Tuesday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'july week monday', expected: '2024-07-01 Monday 12:00', customNow: new Date('2023-08-15T12:00:00') },
-        { input: 'july first week monday', expected: '2024-07-01 Monday 12:00', customNow: new Date('2023-08-15T12:00:00') },
-        { input: 'july second week friday', expected: '2023-07-14 Friday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'august monday to thursday', expected: {
-        date: '2023-08-07 Monday 12:00',
-        ends: '2023-08-10 Thursday 12:00'
-        }, customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'august first monday to thursday', expected: {
-            date: '2023-08-07 Monday 12:00',
-            ends: '2023-08-10 Thursday 12:00'
-        }, customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'september second monday to thursday', expected: {
-            date: '2023-09-11 Monday 12:00',
-            ends: '2023-09-14 Thursday 12:00'
-        }, customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'add 1 month', expected: '2023-06-15 Thursday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: '16 september', expected: '2023-09-16 Saturday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: 'thursday', expected: '2023-05-18 Thursday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: '16 february', expected: '2024-02-16 Friday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-        { input: '30', expected: '2024-08-30 Friday 12:00', customNow: new Date('2024-08-01T12:00:00') },
-        { input: 'saturday', expected: '2023-05-20 Saturday 12:00', customNow: new Date('2023-05-15T12:00:00') },
-    ];
+    getNextDates(cronPattern, startDate, numDates) {
+        const options = {
+            currentDate: startDate,
+        };
 
-    testCases.forEach(({ input, expected, customNow }, index) => {
-        const parser = new Text2Time(customNow);
-        const result = parser.next(input);
-        try {
-            if (typeof expected === 'object' && expected.date && expected.ends) {
-                assert.deepStrictEqual(
-                    {
-                        date: format(result.date, parser.DATE_FORMAT),
-                        ends: format(result.ends, parser.DATE_FORMAT)
-                    },
-                    expected,
-                    `Test case ${index + 1} failed: ${input}`
-                );
-            } else {
-                assert.strictEqual(
-                    format(result.date, parser.DATE_FORMAT),
-                    expected,
-                    `Test case ${index + 1} failed: ${input}`
-                );
-            }
-            console.log(`Test case ${index + 1} passed: ${input}`);
-        } catch (error) {
-            console.error(`Test case ${index + 1} failed: ${input}`);
-            console.error(`Expected: ${JSON.stringify(expected)}`);
-            console.error(`Received: ${JSON.stringify({
-                date: format(result.date, parser.DATE_FORMAT),
-                ends: result.ends ? format(result.ends, parser.DATE_FORMAT) : null
-            })}`);
+        const interval = cronParser.parseExpression(cronPattern, options);
+        const dates = [];
+
+        for (let i = 0; i < numDates; i++) {
+            dates.push(interval.next().toString());
         }
-    });
+
+        return dates;
+    }
 }
 
 module.exports = { Text2Time };
