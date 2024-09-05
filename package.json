@@ -1,0 +1,36 @@
+{
+    "name": "text2time",
+    "description": "🕰️ Text2Time - Human-friendly date expressions for dates and cron expressions.",
+    "version": "1.0.0",
+    "main": "index.js",
+    "directories": {
+        "test": "test"
+    },
+    "scripts": {
+        "test": "mocha"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/clasen/Text2Time.git"
+    },
+    "keywords": [
+        "text2time",
+        "text2cron",
+        "cron",
+        "parser",
+        "date-parser",
+        "date-fns"
+    ],
+    "author": "Martin Clasen",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/clasen/Text2Time/issues"
+    },
+    "homepage": "https://github.com/clasen/Text2Time#readme",
+    "dependencies": {
+        "date-fns": "^3.6.0"
+    },
+    "devDependencies": {
+        "mocha": "^10.7.3"
+    }
+}
