@@ -2,9 +2,10 @@ const { addDays, addWeeks, addMonths, getDay } = require('date-fns');
 const cronParser = require('cron-parser');
 
 class Text2Time {
-    constructor(args = {}) {
+    constructor(args = { every: {} }) {
         this.now = args.now || new Date();
-        this.everyOptions = args.every || { next: 60, seconds: true };
+        this.everyOptions = { next: 60, seconds: true };
+        this.everyOptions = { ...this.everyOptions, ...args.every };
 
         // Constants for days
         this.DAYS = {
@@ -31,15 +32,23 @@ class Text2Time {
     }
 
     parse(input) {
-        const parts = input.toLowerCase().split(' ');
+        const parts = input.toLowerCase().split(/\s+/);
         const now = this.now;
-        let result = { date: now, ends: null, next:[] };
+        let result = { date: now, ends: null, next: [] };
 
         if (parts[0] === 'every') {
             const cron = this.every(input);
             result.next = this.getNextDates(cron, this.now, this.everyOptions.next);
             result.date = result.next[0];
             return result;
+        }
+
+        // Add this block to handle the time
+        const timeMatch = input.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (timeMatch) {
+            const [, hours, minutes, seconds] = timeMatch;
+            result.date.setHours(parseInt(hours, 10), parseInt(minutes, 10), seconds ? parseInt(seconds, 10) : 0, 0);
+            parts.pop();
         }
 
         if (parts[0] === 'next') {
