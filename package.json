@@ -1,7 +1,7 @@
 {
     "name": "text2time",
     "description": "🕰️ Text2Time - Human-friendly date expressions for dates and cron expressions.",
-    "version": "1.1.9",
+    "version": "1.1.10",
     "main": "index.js",
     "directories": {
         "test": "test"
@@ -23,7 +23,8 @@
         "cron-next",
         "dates",
         "cron-parser",
-        "every"
+        "every",
+        "clasen"
     ],
     "author": "Martin Clasen",
     "license": "MIT",

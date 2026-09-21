@@ -104,6 +104,49 @@ describe('Text2Time', function () {
         });
     });
 
+    describe('parsing regressions', function () {
+        it('keeps the reference date and later calls unchanged after an explicit time', function () {
+            const now = new Date('2023-05-15T12:00:00');
+            const parser = new Text2Time({ now });
+            const result = parser.next('add 1 day 15:30:20');
+            assert.strictEqual(format(result.date, DATE_FORMAT), '2023-05-16 Tuesday 15:30:20');
+            assert.strictEqual(format(now, DATE_FORMAT), '2023-05-15 Monday 12:00:00');
+            assert.strictEqual(format(parser.next('add 1 day').date, DATE_FORMAT), '2023-05-16 Tuesday 12:00:00');
+        });
+
+        it('returns an independent date for now', function () {
+            const parser = new Text2Time({ now: new Date('2023-05-15T12:00:00') });
+            parser.next('now').date.setFullYear(2000);
+            assert.strictEqual(parser.now.getFullYear(), 2023);
+        });
+
+        it('finds Sunday, including the following week when today is Sunday', function () {
+            for (const day of [15, 21]) {
+                const parser = new Text2Time({ now: new Date(2023, 4, day, 12) });
+                assert.strictEqual(format(parser.next('sunday').date, DATE_FORMAT),
+                    day === 15 ? '2023-05-21 Sunday 12:00:00' : '2023-05-28 Sunday 12:00:00');
+            }
+        });
+
+        it('normalizes whitespace and case at the public entry points', function () {
+            const parser = new Text2Time({ now: new Date('2023-05-15T12:00:00'), every: { next: 2 } });
+            assert.strictEqual(format(parser.next('  NEXT   Tuesday  ').date, DATE_FORMAT), '2023-05-16 Tuesday 12:00:00');
+            assert.strictEqual(format(parser.parse('  ADD   1 DAY  ').date, DATE_FORMAT), '2023-05-16 Tuesday 12:00:00');
+            assert.strictEqual(parser.every('  5   minutes  '), '0 */5 * * * *');
+            assert.strictEqual(parser.parse('  EVERY   5 minutes  ').next.length, 2);
+        });
+
+        it('matches complete month and weekday words in cron expressions', function () {
+            const parser = new Text2Time({ now: new Date('2023-05-15T12:00:00'), every: { next: 2 } });
+            assert.strictEqual(parser.every('October at 04:00'), '0 0 4 * 10 *');
+            assert.strictEqual(parser.every('day from monday to friday in october'), '0 0 0 * 10 1-5');
+            assert.strictEqual(parser.every('day in january'), '0 0 0 * 1 *');
+            const result = parser.parse('every October at 04:00');
+            assert.strictEqual(result.next.length, 2);
+            assert.strictEqual(format(new Date(result.date), DATE_FORMAT), '2023-10-01 Sunday 04:00:00');
+        });
+    });
+
     describe('#parse()', function () {
         it('should correctly parse and return next occurrences for "every 3 months day 5 at 4:04:04"', function () {
             const parser = new Text2Time({

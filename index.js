@@ -25,15 +25,16 @@ class Text2Time {
     }
 
     next(input) {
-        input = input.toLowerCase();
+        input = input.trim().toLowerCase();
         const skipPrefixes = ['next', 'add', 'now', 'every'];
         const skip = skipPrefixes.some(prefix => input.startsWith(prefix));
         return this.parse(skip ? input : 'next ' + input);
     }
 
     parse(input) {
-        const parts = input.toLowerCase().split(/\s+/);
-        const now = this.now;
+        input = input.trim().toLowerCase();
+        const parts = input.split(/\s+/);
+        const now = new Date(this.now);
         let result = { date: now, ends: null, next: [] };
 
         if (parts[0] === 'every') {
@@ -43,11 +44,8 @@ class Text2Time {
             return result;
         }
 
-        // Add this block to handle the time
         const timeMatch = input.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
         if (timeMatch) {
-            const [, hours, minutes, seconds] = timeMatch;
-            result.date.setHours(parseInt(hours, 10), parseInt(minutes, 10), seconds ? parseInt(seconds, 10) : 0, 0);
             parts.pop();
         }
 
@@ -68,7 +66,7 @@ class Text2Time {
                 const day = parseInt(parts[1], 10);
                 const month = this.MONTHS[parts[2]];
                 result.date = this.nextDate(day, month);
-            } else if (this.DAYS[parts[1]]) {
+            } else if (Object.prototype.hasOwnProperty.call(this.DAYS, parts[1])) {
                 const dayOfWeek = this.DAYS[parts[1]];
                 result.date = this.nextDayOfWeek(dayOfWeek);
             } else if (parts.length === 2 && !isNaN(parseInt(parts[1], 10))) {
@@ -85,6 +83,13 @@ class Text2Time {
                 result.date = this.nextWeeks(amount);
             } else if (unit === 'month' || unit === 'months') {
                 result.date = this.nextMonth(amount);
+            }
+        }
+
+        if (timeMatch) {
+            const [, hours, minutes, seconds = '0'] = timeMatch;
+            for (const date of [result.date, result.ends]) {
+                if (date) date.setHours(Number(hours), Number(minutes), Number(seconds), 0);
             }
         }
 
@@ -106,7 +111,8 @@ class Text2Time {
         let [minute, hour, dayOfMonth, month, dayOfWeek] = ['0', '0', '*', '*', '*'];
         let second = '0';  // Declare second variable
 
-        const lowercaseInput = input.toLowerCase();
+        const lowercaseInput = input.trim().toLowerCase().replace(/\s+/g, ' ');
+        const words = lowercaseInput.split(' ');
 
         // Parse time
         const timeMatch = lowercaseInput.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
@@ -119,23 +125,23 @@ class Text2Time {
 
         // Parse month
         for (const [monthName, monthNumber] of Object.entries(months)) {
-            if (lowercaseInput.includes(monthName)) {
+            if (words.includes(monthName)) {
                 month = monthNumber.toString();
                 break;
             }
         }
 
         // Parse day of week
-        if (lowercaseInput.includes('to')) {
-            const [start, end] = lowercaseInput.split('to').map(part => {
+        if (words.includes('to')) {
+            const [start, end] = lowercaseInput.split(/\bto\b/).map(part => {
                 for (const [dayName, dayNumber] of Object.entries(days)) {
-                    if (part.includes(dayName)) return dayNumber;
+                    if (part.trim().split(/\s+/).includes(dayName)) return dayNumber;
                 }
             });
             dayOfWeek = `${start}-${end}`;
         } else {
             const weekDays = [...new Set(Object.entries(days)
-                .filter(([dayName]) => lowercaseInput.includes(dayName))
+                .filter(([dayName]) => words.includes(dayName))
                 .map(([, dayNumber]) => dayNumber))];
             if (weekDays.length > 0) {
                 dayOfWeek = weekDays.join(',');
