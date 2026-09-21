@@ -1,7 +1,7 @@
 {
     "name": "text2time",
     "description": "🕰️ Text2Time - Human-friendly date expressions for dates and cron expressions.",
-    "version": "1.1.8",
+    "version": "1.1.9",
     "main": "index.js",
     "directories": {
         "test": "test"
@@ -36,6 +36,7 @@
         "date-fns": "^3.6.0"
     },
     "devDependencies": {
-        "mocha": "^10.7.3"
-    }
+        "mocha": "^12.0.2"
+    },
+    "packageManager": "pnpm@11.3.0"
 }
