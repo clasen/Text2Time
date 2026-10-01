@@ -1,0 +1,2 @@
+overrides:
+  'mocha>serialize-javascript': '7.1.2'
